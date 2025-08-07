@@ -14,3 +14,14 @@
 
 <app-heatmap [reload]="reloadHeatmap()"></app-heatmap>
 
+<!-- Schieberegler -->
+<div class="time-slider">
+  <input
+    type="range"
+    [min]="0"
+    [max]="1439"
+    [value]="sliderPosition"
+    (input)="onSliderChange($event)"
+  />
+  <p>Gewählter UTC-Zeitpunkt: {{ formatUTC(currentTimestamp()) }}</p>
+</div>
