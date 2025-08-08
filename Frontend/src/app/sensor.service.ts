@@ -24,8 +24,13 @@ export class Sensor {
   getHeatmapArray(): Observable<{ heatmap: number[][] }> {
   return this.http.get<{ heatmap: number[][] }>(`${this.baseUrl}/getArray`);
   }
-  getSensorsAtTimestamp(timestamp: number) {
-  return this.http.get(`/api/sensors-at?timestamp=${timestamp}`);
+  
+getArray(timestamp: string): Observable<any> {
+  return this.http.get(`/api/getArray?timestamp=${encodeURIComponent(timestamp)}`);
+}
+getSensorsAtTimestamp(timestamp: number): Observable<any> {
+  const isoString = new Date(timestamp).toISOString();
+  return this.http.get<any>(`/api/sensorsAtTimestamp?timestamp=${encodeURIComponent(isoString)}`);
 }
 
 }

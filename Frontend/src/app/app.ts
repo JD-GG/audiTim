@@ -14,7 +14,7 @@ import { MatSliderModule } from '@angular/material/slider';
     SensorChartComponent,
     Heatmap,
     ArrayTestComponent,
-    MatSliderModule // <== Module registrieren
+    MatSliderModule
   ],
   templateUrl: './app.html'
 })
@@ -22,13 +22,14 @@ export class App {
   chartData = signal<any>(null); 
   textData = signal<any>(null);
   reloadHeatmap = signal(false);
+  heatmapData = signal<any>(null); // <== Heatmapdaten speichern
 
   // Slider-Werte für Tagesnavigation
-  currentTimestamp = signal<number>(this.getStartOfDayUnix()); // UTC-Startzeit heute
-  maxTimestamp = signal<number>(this.getEndOfDayUnix());       // UTC-Endzeit heute
+  currentTimestamp = signal<number>(this.getStartOfDayUnix());
+  maxTimestamp = signal<number>(this.getEndOfDayUnix());
 
   constructor(private sensor: Sensor) {
-    // Effekt zum Laden von Daten bei Slider-Änderung
+    // Effekt: bei Timestamp-Änderung neue Daten laden
     effect(() => {
       const timestamp = this.currentTimestamp();
       this.loadSensorDataAt(timestamp);
@@ -57,14 +58,20 @@ export class App {
     });
   }
 
-  // Sensor-Daten für aktuellen Slider-Zeitpunkt laden
+  // Sensor- und Heatmap-Daten für aktuellen Timestamp laden
   loadSensorDataAt(unixTimestamp: number) {
+    // Sensor-Daten (Chart)
     this.sensor.getSensorsAtTimestamp(unixTimestamp).subscribe(res => {
       this.chartData.set(res);
     });
+
+    // Heatmap-Daten (aus /api/getArray?timestamp=...)
+    const isoTimestamp = new Date(unixTimestamp).toISOString();
+    this.sensor.getArray(isoTimestamp).subscribe(res => {
+      this.heatmapData.set(res);
+    });
   }
 
-  // Hilfsmethoden zur Tagesgrenze (UTC)
   getStartOfDayUnix(): number {
     const now = new Date();
     now.setUTCHours(0, 0, 0, 0);
@@ -77,19 +84,16 @@ export class App {
     return now.getTime();
   }
 
-// Neue Signal für Sliderposition (0–1439 Minuten)
-sliderPosition = signal<number>(0);
+  sliderPosition = signal<number>(0);
 
-onSliderChange(event: Event) {
-  const minutes = +(event.target as HTMLInputElement).value;
-  this.sliderPosition.set(minutes);
+  onSliderChange(event: Event) {
+    const minutes = +(event.target as HTMLInputElement).value;
+    this.sliderPosition.set(minutes);
+    const dayStart = this.getStartOfDayUnix();
+    const timestamp = dayStart + minutes * 60 * 1000;
+    this.currentTimestamp.set(timestamp);
+  }
 
-  const dayStart = this.getStartOfDayUnix();
-  const timestamp = dayStart + minutes * 60 * 1000; // Minuten in ms
-  this.currentTimestamp.set(timestamp);
-}
-
-  // Anzeigeformat für UTC Zeit
   formatUTC(ms: number): string {
     return new Date(ms).toISOString();
   }

@@ -15,13 +15,14 @@
 <app-heatmap [reload]="reloadHeatmap()"></app-heatmap>
 
 <!-- Schieberegler -->
-<div class="time-slider">
+<div class="time-slider" style="display: flex; flex-direction: column; align-items: center; margin-top: 2rem;">
   <input
     type="range"
     [min]="0"
     [max]="1439"
-    [value]="sliderPosition"
+    [value]="sliderPosition()"
     (input)="onSliderChange($event)"
+    style="width: 60%; height: 30px;"
   />
-  <p>Gewählter UTC-Zeitpunkt: {{ formatUTC(currentTimestamp()) }}</p>
+  <p style="margin-top: 1rem;">Gewählter UTC-Zeitpunkt: {{ formatUTC(currentTimestamp()) }}</p>
 </div>

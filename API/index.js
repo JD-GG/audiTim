@@ -120,9 +120,15 @@ app.get('/api/generate', async (req, res) => {
 // GET /api/getArray – Heatmap basierend auf Inverser Distanzgewichtung (IDW) mit Peekerkennung durch WCL
 // Heatmap basierend auf sensor_1–sensor_4
 app.get('/api/getArray', async (req, res) => {
+  const timestamp = req.query.timestamp;
+
+  if (!timestamp) {
+    return res.status(400).json({ error: 'Missing timestamp query parameter' });
+  }
+
   const fluxQuery = `
     from(bucket: "${bucket}")
-      |> range(start: -5m)
+      |> range(start: ${JSON.stringify(timestamp)})
       |> filter(fn: (r) => r._measurement == "sensor_data")
       |> filter(fn: (r) =>
         r._field == "sensor_1" or
@@ -130,8 +136,8 @@ app.get('/api/getArray', async (req, res) => {
         r._field == "sensor_3" or
         r._field == "sensor_4"
       )
-      |> sort(columns: ["_time"], desc: true)
-      |> limit(n:1)
+      |> sort(columns: ["_time"], desc: false)
+      |> limit(n: 4)
   `;
 
   const sensorMapping = {
@@ -148,17 +154,15 @@ app.get('/api/getArray', async (req, res) => {
     d4: { x: 1, y: 1 },
   };
 
-  // -----------------------------------------
-  // Einstellbare Parameter
-  const peakStrengthFactor = 1.5; // z.B. 1.0 = normal, 2.0 = doppelt so stark wie der Maximalwert
-  const idwFlatteningPower = 2.0; // z.B. 2.0 = Standard, 1.2 = abgeflacht, 4.0 = steiler
+  const peakStrengthFactor = 1.5;
+  const idwFlatteningPower = 2.0;
   const gridSize = 10;
-  // -----------------------------------------
+
   const fieldToCorner = {
-    sensor_1: "d1", // top-left
-    sensor_2: "d2", // top-right
-    sensor_3: "d3", // bottom-left
-    sensor_4: "d4", // bottom-right
+    sensor_1: "d1",
+    sensor_2: "d2",
+    sensor_3: "d3",
+    sensor_4: "d4",
   };
 
   const sensorValues = {};
@@ -187,7 +191,7 @@ app.get('/api/getArray', async (req, res) => {
       });
     }
 
-    // WCL Peak-Bestimmung
+    // WCL Peak
     const epsilon = 0.0001;
     let sumWeightedX = 0;
     let sumWeightedY = 0;
@@ -205,7 +209,7 @@ app.get('/api/getArray', async (req, res) => {
     const peakY = sumWeightedY / (sumWeights || epsilon);
     const peakValue = Math.max(...Object.values(sensorValues)) * peakStrengthFactor;
 
-    // Interpolationspunkte inkl. virtuellem Peak
+    // Interpolationspunkte
     const interpolationPoints = [
       ...Object.entries(sensorPositions).map(([key, pos]) => ({
         x: pos.x,
@@ -249,12 +253,45 @@ app.get('/api/getArray', async (req, res) => {
         y: Number(peakY.toFixed(4)),
         value: Number(peakValue.toFixed(2))
       },
+      timestamp,
       settings: {
         peakStrengthFactor,
         idwFlatteningPower
       }
     });
 
+  } catch (err) {
+    console.error("❌ Query failed:", err);
+    res.status(500).send("Query failed");
+  }
+});
+app.get('/api/sensorsAtTimestamp', async (req, res) => {
+  const timestamp = req.query.timestamp;
+
+  if (!timestamp) {
+    return res.status(400).json({ error: 'Missing timestamp parameter' });
+  }
+
+  const fluxQuery = `
+    from(bucket: "${bucket}")
+      |> range(start: ${JSON.stringify(timestamp)}, stop: ${JSON.stringify(timestamp)})
+      |> filter(fn: (r) => r._measurement == "sensor_data")
+      |> filter(fn: (r) => r._field == "decibel")
+  `;
+
+  const result = [];
+
+  try {
+    for await (const { values, tableMeta } of queryApi.iterateRows(fluxQuery)) {
+      const row = tableMeta.toObject(values);
+      result.push({
+        time: row._time,
+        sensor_id: row.sensor_id,
+        decibel: Math.min(row._value, 3.5)
+      });
+    }
+
+    res.json(result);
   } catch (err) {
     console.error("❌ Query failed:", err);
     res.status(500).send("Query failed");
