@@ -17,7 +17,7 @@ export interface PeakFrame {
 // sensor.service.ts
 @Injectable({ providedIn: 'root' })
 export class Sensor {
-  private baseUrl = 'http://g5-backend:3000/api'; // statt localhost? backend = Docker-Service-Name
+  private baseUrl = 'http://localhost:3300/api'; // statt localhost? backend = Docker-Service-Name
 
   constructor(private http: HttpClient) {}
 
