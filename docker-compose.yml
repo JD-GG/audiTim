@@ -4,7 +4,7 @@ services:
       context: ./API
     container_name: backend
     ports:
-      - "3000:3000"
+      - "3300:3000"
     env_file:
       - .env
     environment:
@@ -20,7 +20,7 @@ services:
     image: influxdb:2.7
     container_name: influxdb
     ports:
-      - "8086:8086"
+      - "3301:8086"
     volumes:
       - influxdb_data:/var/lib/influxdb2
     env_file:
@@ -42,7 +42,7 @@ services:
     image: nodered:v1
     container_name: nodered
     ports:
-      - "1880:1880"
+      - "3302:1880"
     environment:
       - TZ=Europe/Berlin
     networks:
@@ -56,7 +56,7 @@ services:
     image: frontend:v1
     container_name: frontendcontainer
     ports:
-      - "8081:8081"
+      - "3303:8081"
     expose:
       - "8081"
     networks:
@@ -97,6 +97,3 @@ volumes:
 networks:
   sensor-net:
     external: true
-
-
-
