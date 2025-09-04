@@ -2,7 +2,7 @@ services:
   backend:
     build:
       context: ./API
-    container_name: backend
+    container_name: g5-backend
     ports:
       - "3300:3000"
     env_file:
@@ -13,16 +13,16 @@ services:
       - INFLUX_ORG=${INFLUX_ORG}
       - INFLUX_BUCKET=${INFLUX_BUCKET}
     networks:
-      - sensor-net
+      - sensor-net-5
     image: api:v1
 
   influxdb:
     image: influxdb:2.7
-    container_name: influxdb
+    container_name: g5-influxdb
     ports:
       - "3301:8086"
     volumes:
-      - influxdb_data:/var/lib/influxdb2
+      - g5-influxdb_data:/var/lib/influxdb2
     env_file:
       - .env
     environment:
@@ -34,19 +34,19 @@ services:
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN}
       - TZ=Europe/Berlin
     networks:
-      - sensor-net
+      - sensor-net-5
 
   nodered:
     build:
       context: ./DB
     image: nodered:v1
-    container_name: nodered
+    container_name: g5-nodered
     ports:
       - "3302:1880"
     environment:
       - TZ=Europe/Berlin
     networks:
-      - sensor-net
+      - sensor-net-5
     depends_on:
       - influxdb
 
@@ -54,13 +54,13 @@ services:
     build:
       context: ./Frontend
     image: frontend:v1
-    container_name: frontendcontainer
+    container_name: g5-frontendcontainer
     ports:
       - "3303:8081"
     expose:
       - "8081"
     networks:
-      - sensor-net
+      - sensor-net-5
     volumes:
       - ./Documentation/ProjektSe/dokumentation.pdf:/usr/share/nginx/html/assets/dokumentation.pdf:ro
 
@@ -68,7 +68,7 @@ services:
     build:
       context: ./AlertWatcher
     image: alert-watcher:v1
-    container_name: alert-watcher
+    container_name: g5-alert-watcher
     depends_on:
       - influxdb
     env_file:
@@ -84,16 +84,15 @@ services:
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
       - INTERVAL_SEC=30
     volumes:
-      - alert_state:/app/state
+      - g5-alert_state:/app/state
     restart: unless-stopped
     networks:
-      - sensor-net
+      - sensor-net-5
 
 volumes:
-  influxdb_data:
-  nodered_data:
-  alert_state:
+  g5-influxdb_data:
+  g5-alert_state:
 
 networks:
-  sensor-net:
+  sensor-net-5:
     external: true
