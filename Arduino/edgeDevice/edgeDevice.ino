@@ -54,8 +54,7 @@ bool dataReceived[4] = {false, false, false, false};
 int countEspTicks = 0; 
 
 // JSON
-JsonDocument doc;
-char jsonString[400];
+StaticJsonDocument<512> doc;  // uses stack, predictable size
 
 // NTP 
 time_t timestamp;
@@ -63,6 +62,9 @@ time_t timestamp;
 void setup() {
   // Connect to WiFi (STA)
   connectWPA2();
+
+  // Config NTP
+  configTime(0, 0, "de.pool.ntp.org");
 
   // Connect to MQTT Broker
   connectMqtt();
@@ -119,18 +121,17 @@ void onReceive(const esp_now_recv_info* info, const uint8_t* data, int len) {
 
 // Prepare and send MQTT payload
 void sendMqtt(int count){
-  configTime(0, 0, "de.pool.ntp.org");
   timestamp = time(nullptr);
   doc["timestamp"] = timestamp;
 
   // Flatten 2D Array -> 1D for JSON
+  JsonArray arr = doc.createNestedArray("value");
   for (int i = 0; i < 40; i++) {
-      doc["value"][i] = *(&collectEsp[0][0] + i); 
+      arr.add(*(&collectEsp[0][0] + i));
   }
 
   doc["sequence"] = count;
   doc["meta"] = "null";
-  serializeJson(doc, jsonString);
 
   // Ensure connectivity before sending
   while(WiFi.status() != WL_CONNECTED) {
@@ -143,7 +144,7 @@ void sendMqtt(int count){
   }
 
   mqttClient.beginMessage(topic);
-  mqttClient.println(jsonString);
+  serializeJson(doc, mqttClient);
   mqttClient.endMessage();
   doc.clear();
 }
@@ -151,7 +152,7 @@ void sendMqtt(int count){
 // Connect to Wi-Fi with retries
 void connectWPA2() {
   // Cleanup previous connections
-  WiFi.disconnect(true);        // Disconnect from STA
+  WiFi.disconnect(true);        // Discotopicnnect from STA
   delay(100);                   // Tactical delay
 
   // Connect to STA first

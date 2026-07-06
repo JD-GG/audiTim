@@ -26,7 +26,7 @@
                   alias up='docker-compose up --build -d'
                   alias down='docker-compose down'
                   clean() {
-+                    docker-compose down --rmi local -v --remove-orphans
+                     docker-compose down --rmi local -v --remove-orphans
                      docker rm -f $(docker ps -aq)
                      docker volume rm $(docker volume ls -q)
                    }
